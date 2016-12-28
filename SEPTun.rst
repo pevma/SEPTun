@@ -1011,8 +1011,11 @@ Suricata relevant config
 
 Since we are using Suricata with AF_Packet the critical part there is to:
 
-* pin the Suricata worker threads to the isolated cpus (see above `Core isolation`)
+* pin the Suricata worker threads to the isolated cpus (see above `Core isolation`) - CPU Affinity
 * enable the new (in 3.2dev) `local bypass` feature - If the corresponding flow is local bypassed then it simply skips all streaming, detection and output and the packet goes directly out in IDS mode and to verdict in IPS mode.
+
+Local bypass
+~~~~~~~~~~~~
 
 `What is local bypass <https://www.stamus-networks.com/2016/09/28/suricata-bypass-feature/>`_
 
@@ -1039,7 +1042,9 @@ Local bypass conf::
     memcap: 24gb
     depth: 1mb   
 
-    
+AF-Packet
+~~~~~~~~~
+
 AF-Packet::
 
  # Linux high speed capture support
@@ -1178,6 +1183,66 @@ the worker threads accordingly with CPU affinity.
     :align: center
     :width: 80 %
 
+
+AF-packet memory consumption calculations
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+`A detailed description and a breakdown can be found in this article <http://pevma.blogspot.com/2015/10/suricata-with-afpacket-memory-of-it-all.html>`_
+
+Memory equation (all numbers below are in bytes): ::
+
+ <number_of_total_detection_threads> *
+ <((780)+(default_packet_size))> *
+ <max-pending-packets>
+ 
+ +
+ 
+ <defrag.memcap>
+ 
+ +
+ 
+ <host.memcap>
+ 
+ +
+ 
+ <ippair.memcap>
+ 
+ +
+ 
+ <flow.memcap>
+ 
+ +
+ 
+ <number_of_threads> * 
+ <216(TcpSession structure is 192 bytes, PoolBucket is 24 bytes)> * 
+ <prealloc-sessions>
+ 
+ +
+ 
+ [per af-packet interface enabled]
+ <af-packet_number_of_threads>  * 
+ <ringsize>  * 
+ <((780)+(default_packet_size))>
+ 
+ +
+ 
+ <stream.memcap>
+ 
+ +
+ 
+ <stream.reassembly.memcap>
+ 
+ +
+ 
+ <app-layer.protocols.dns.global-memcap>
+ 
+ +
+ 
+ <app-layer.protocols.http.memcap>
+ 
+ =
+ Estimated total memory consumption by Suricata (+/- 1-2%)
+
 Common misconceptions - part 3
 ------------------------------
 
@@ -1299,6 +1364,24 @@ Conclusion points
 * Suricata tuning for high performance is a processes as opposed to a config copy/pasted from somewhere. 
 * The tuning itself is done for the whole system - not just Suricata. 
 * Test and analyze before you order that HW.
+
+|
+
+Performance on a tunned system under 20 Gbps sustained peaks :  
+
+.. image:: images/Perf-aftertuneup.png
+    :alt: Performance after tuneup.
+    :align: center
+    :width: 80 %
+
+|
+
+Drops on a tunned system under 20 Gbps sustained peaks :  
+
+.. image:: images/Drops-aftertuneup.png
+    :alt: Drops after tuneup.
+    :align: center
+    :width: 80 %
 
 |
 
